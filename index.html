@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es" class="bg-black text-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanzas Personales | Dashboard Neon</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        fintech: {
+                            green: '#10B981', // Luminous green
+                            greenLight: '#34D399',
+                            red: '#EF4444',   // Luminous red
+                            gray: '#9CA3AF',  // Neutral gray
+                            dark: '#000000',  // Pure black
+                            card: '#111827',  // Very dark gray for cards
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-black font-sans antialiased min-h-screen">
+    
+    <!-- Navbar -->
+    <nav class="bg-gray-900 border-b border-fintech-green/30 sticky top-0 z-50 neon-border-bottom">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <i class="fa-solid fa-wallet text-fintech-green text-3xl mr-3 neon-text"></i>
+                        <span class="font-bold text-xl tracking-tight text-white tracking-wider">Mis Finanzas</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="lastUpdated" class="text-sm text-gray-400 font-medium">Actualizando...</span>
+                    <button id="refreshBtn" class="p-2 rounded-full text-fintech-green hover:bg-fintech-green/10 focus:outline-none transition-colors duration-200">
+                        <i class="fa-solid fa-arrow-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Summary Cards Section -->
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5 mb-8">
+            <!-- Balance Card -->
+            <div class="neon-shadow bg-gray-900 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-center">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Balance Total</p>
+                        <h3 class="text-3xl font-bold text-white" id="totalBalance">$0.00</h3>
+                    </div>
+                    <div class="p-3 bg-fintech-green/10 rounded-xl text-fintech-green">
+                        <i class="fa-solid fa-building-columns text-xl"></i>
+                    </div>
+                </div>
+                <!-- subtle background glow -->
+                <div class="absolute -bottom-6 -right-6 w-24 h-24 bg-fintech-green/20 rounded-full blur-2xl"></div>
+            </div>
+
+            <!-- Total Income -->
+            <div class="neon-shadow bg-gray-900 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-center">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Total Ingresos</p>
+                        <h3 class="text-2xl font-bold text-fintech-green neon-text" id="totalIncome">$0.00</h3>
+                    </div>
+                    <div class="p-3 bg-fintech-green/10 rounded-xl text-fintech-green">
+                        <i class="fa-solid fa-arrow-trend-up text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Expenses -->
+            <div class="neon-shadow bg-gray-900 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-center border-l border-fintech-red/30">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Total Gastos</p>
+                        <h3 class="text-2xl font-bold text-fintech-red drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" id="totalExpenses">$0.00</h3>
+                    </div>
+                    <div class="p-3 bg-fintech-red/10 rounded-xl text-fintech-red">
+                        <i class="fa-solid fa-arrow-trend-down text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Month Income -->
+            <div class="neon-shadow bg-gray-900 rounded-2xl p-6 relative overflow-hidden hidden lg:flex flex-col justify-center">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Ingresos (Mes)</p>
+                        <h3 class="text-2xl font-bold text-gray-100" id="monthIncome">$0.00</h3>
+                    </div>
+                    <div class="p-3 bg-gray-800 rounded-xl text-fintech-green">
+                        <i class="fa-regular fa-calendar-plus text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+             <!-- Month Expenses -->
+            <div class="neon-shadow bg-gray-900 rounded-2xl p-6 relative overflow-hidden hidden lg:flex flex-col justify-center border-l border-fintech-red/20">
+                <div class="flex items-center justify-between z-10">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Gastos (Mes)</p>
+                        <h3 class="text-2xl font-bold text-gray-100" id="monthExpense">$0.00</h3>
+                    </div>
+                    <div class="p-3 bg-gray-800 rounded-xl text-fintech-red">
+                        <i class="fa-regular fa-calendar-minus text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Transaction Form Section -->
+        <div class="neon-shadow bg-gray-900 rounded-2xl p-6 mb-8 slide-up">
+            <h3 class="text-lg leading-6 font-medium text-white mb-4 flex items-center">
+                <i class="fa-solid fa-plus-circle text-fintech-green mr-2"></i> Añadir Nueva Transacción
+            </h3>
+            <form id="transactionForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                <div class="lg:col-span-1">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Fecha</label>
+                    <input type="date" id="formDate" required class="w-full bg-black border border-fintech-green/30 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-fintech-green focus:ring-1 focus:ring-fintech-green transition-colors">
+                </div>
+                <div class="lg:col-span-1">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Tipo</label>
+                    <select id="formType" required class="w-full bg-black border border-fintech-green/30 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-fintech-green focus:ring-1 focus:ring-fintech-green transition-colors appearance-none">
+                        <option value="Ingreso">Ingreso</option>
+                        <option value="Gasto">Gasto</option>
+                    </select>
+                </div>
+                <div class="lg:col-span-1">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Categoría</label>
+                    <input type="text" id="formCategory" required placeholder="Ej. Freelance" class="w-full bg-black border border-fintech-green/30 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-fintech-green focus:ring-1 focus:ring-fintech-green transition-colors">
+                </div>
+                <div class="lg:col-span-1">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Descripción</label>
+                    <input type="text" id="formDescription" required placeholder="Detalle" class="w-full bg-black border border-fintech-green/30 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-fintech-green focus:ring-1 focus:ring-fintech-green transition-colors">
+                </div>
+                <div class="lg:col-span-1">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Monto ($)</label>
+                    <input type="number" id="formAmount" step="0.01" min="0" required placeholder="0.00" class="w-full bg-black border border-fintech-green/30 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-fintech-green focus:ring-1 focus:ring-fintech-green transition-colors">
+                </div>
+                <div class="lg:col-span-1">
+                    <button type="submit" class="w-full bg-fintech-green/20 border border-fintech-green text-fintech-green hover:bg-fintech-green hover:text-black font-semibold rounded-lg py-2 px-4 transition-all duration-300 neon-shadow-btn">
+                        Guardar
+                    </button>
+                </div>
+            </form>
+            <p class="text-xs text-gray-500 mt-3">* Al guardar, esta transacción se añadirá a la tabla y se enviará en formato JSON al Webhook configurado.</p>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Line Chart (Balance Evolution) -->
+             <div class="neon-shadow bg-gray-900 rounded-2xl p-6 lg:col-span-2 slide-up delay-100">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg leading-6 font-medium text-white">Evolución del Balance</h3>
+                </div>
+                <div class="relative h-72 w-full">
+                    <canvas id="balanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Pie Chart (Expenses by Category) -->
+            <div class="neon-shadow bg-gray-900 rounded-2xl p-6 slide-up delay-100">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg leading-6 font-medium text-white">Gastos por Categoría</h3>
+                </div>
+                <div class="relative h-72 w-full flex justify-center">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bar Chart (Income vs Expense) -->
+        <div class="neon-shadow bg-gray-900 rounded-2xl p-6 mb-8 slide-up delay-200">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg leading-6 font-medium text-white">Ingresos vs Gastos por Mes</h3>
+            </div>
+            <div class="relative h-80 w-full">
+                <canvas id="incomeExpenseChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Transactions Section -->
+        <div class="neon-shadow bg-gray-900 rounded-2xl overflow-hidden slide-up delay-300">
+            <!-- Table Controls -->
+            <div class="p-6 border-b border-fintech-green/20 bg-gray-900/50">
+                <div class="flex flex-col sm:flex-row justify-between items-center sm:space-x-4 space-y-4 sm:space-y-0">
+                    <h3 class="text-lg font-medium text-white self-start sm:self-center">Transacciones Recientes</h3>
+                    
+                    <div class="flex flex-col sm:flex-row w-full sm:w-auto space-y-3 sm:space-y-0 sm:space-x-3">
+                        <!-- Search -->
+                        <div class="relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fa-solid fa-search text-fintech-green/70"></i>
+                            </div>
+                            <input type="text" id="searchInput" class="bg-black text-white focus:ring-fintech-green focus:border-fintech-green block w-full pl-10 sm:text-sm border-fintech-green/30 rounded-lg py-2 border outline-none transition-colors" placeholder="Buscar descripción...">
+                        </div>
+                        
+                        <!-- Type Filter -->
+                        <select id="typeFilter" class="bg-black text-white border-fintech-green/30 block w-full pl-3 pr-10 py-2 text-base focus:outline-none focus:ring-fintech-green focus:border-fintech-green sm:text-sm rounded-lg border appearance-none">
+                            <option value="">Todos los Tipos</option>
+                            <option value="Ingreso">Ingreso</option>
+                            <option value="Gasto">Gasto</option>
+                        </select>
+
+                         <!-- Category Filter -->
+                        <select id="categoryFilter" class="bg-black text-white border-fintech-green/30 block w-full pl-3 pr-10 py-2 text-base focus:outline-none focus:ring-fintech-green focus:border-fintech-green sm:text-sm rounded-lg border appearance-none">
+                            <option value="">Todas las Categorías</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-800">
+                    <thead class="bg-black border-y border-fintech-green/20">
+                        <tr>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:text-fintech-green transition-colors" data-sort="Fecha">
+                                Fecha <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                            </th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:text-fintech-green transition-colors" data-sort="Tipo">
+                                Tipo <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                            </th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                Categoría
+                            </th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                Descripción
+                            </th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                                Método/Cuenta
+                            </th>
+                            <th scope="col" class="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:text-fintech-green transition-colors" data-sort="Monto">
+                                Monto <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionTableBody" class="bg-gray-900 divide-y divide-gray-800">
+                        <!-- Rows will be dynamically populated -->
+                        <tr>
+                            <td colspan="6" class="px-6 py-10 whitespace-nowrap text-center text-gray-400 flex flex-col items-center justify-center">
+                                <i class="fa-solid fa-circle-notch fa-spin text-3xl text-fintech-green mb-3 glow-icon"></i>
+                                Inicializando sistemas...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination / Footer -->
+            <div class="bg-black px-4 py-3 border-t border-fintech-green/20 flex items-center justify-between sm:px-6">
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-400">
+                            Mostrando <span class="font-medium text-fintech-green" id="visibleCount">0</span> de <span class="font-medium text-white" id="totalCount">0</span> transacciones
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal for notifications/errors -->
+    <div id="notificationToast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center bg-gray-800 border border-fintech-green/50 text-white px-4 py-3 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.3)] pointer-events-none">
+        <i class="fa-solid fa-check-circle text-fintech-green mr-3 neon-text" id="toastIcon"></i>
+        <p id="toastMessage" class="text-sm font-medium tracking-wide">Transacción enviada al webhook</p>
+    </div>
+
+    <!-- Application Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
