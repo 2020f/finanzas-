@@ -236,7 +236,7 @@ function handleFormSubmit(e) {
         fetch(CONFIG.googleAppScriptWriteUrl, {
             method: 'POST',
             mode: 'no-cors', // Importante para enviar a Google Apps Script sin bloqueo CORS
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(payload)
         }).then(() => {
              console.log("Dato enviado al Sheet");
