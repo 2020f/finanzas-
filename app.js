@@ -4,11 +4,8 @@
 
 // Configuration
 const CONFIG = {
-    // The given URL for sharing is: https://docs.google.com/spreadsheets/d/19bBSf-VoSOICLebZ7bYyDZSuofTnDhWbpbSOo7J5kSU/edit?usp=sharing
-    // We export it as CSV for easy parsing:
-    googleSheetUrl: "https://docs.google.com/spreadsheets/d/19bBSf-VoSOICLebZ7bYyDZSuofTnDhWbpbSOo7J5kSU/export?format=csv",
     // Replace this with your Google Apps Script Web App URL once deployed
-    googleAppScriptWriteUrl: "https://script.google.com/macros/s/AKfycbzrYMxmYFHHQrKVHttmiAA0qWaaxde65_oghQ7O1_ffnYgrWM3K5VEYBaPesuuB9h_3Sw/exec",
+    apiUrl: "https://script.google.com/macros/s/AKfycbxKPfrYHCe3ka7ib59f2SZn3AeizfsLnw_kIYre9N9JRO18phtT0mHYW-R5zq-iZaF1/exec",
     colors: {
         income: '#10B981', // Neon green
         expense: '#EF4444', // Neon red
@@ -72,66 +69,45 @@ async function init() {
 }
 
 /**
- * Parse CSV Data from Google Sheets
- */
-function parseCsv(csvText) {
-    const lines = csvText.split('\n').filter(line => line.trim() !== '');
-    if (lines.length < 2) return [];
-
-    const headers = lines[0].split(',').map(h => h.trim());
-    const data = [];
-
-    for (let i = 1; i < lines.length; i++) {
-        // Handle commas within quotes if needed (basic implementation)
-        const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-        
-        if (currentline.length >= Math.min(headers.length, 2) && currentline.some(cell => cell.trim() !== '')) {
-            const row = {};
-            // Generate an ID for each parsed row
-            row['id'] = crypto.randomUUID();
-            for (let j = 0; j < headers.length; j++) {
-                // Remove quotes from values
-                row[headers[j]] = currentline[j] ? currentline[j].replace(/^"|"$/g, '').trim() : '';
-            }
-            
-            // Standardize format 
-            // Ensure fields are not undefined if Google Sheet headers differ slightly
-            row['Fecha'] = row['Fecha'] || new Date().toISOString().split('T')[0];
-            row['Tipo'] = row['Tipo'] || 'Gasto';
-            row['Categoría'] = row['Categoría'] || 'Sin clasificar';
-            row['Descripción'] = row['Descripción'] || '';
-            row['Monto'] = parseFloat(row['Monto']) || 0;
-            row['Método de pago'] = row['Método de pago'] || '';
-            row['Cuenta'] = row['Cuenta'] || '';
-            
-            // Convert any DD/MM/YYYY into YYYY-MM-DD for sorting logic to work if needed
-            if (row['Fecha'].includes('/') && row['Fecha'].split('/')[2] && row['Fecha'].split('/')[2].length === 4) {
-               const parts = row['Fecha'].split('/');
-               row['Fecha'] = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-            }
-
-            data.push(row);
-        }
-    }
-    
-    // Sort descending by date
-    return data.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
-}
-
-/**
- * Load and Parse Data
+ * Load and Parse Data from API
  */
 async function loadData() {
     showLoading();
     try {
-        if (CONFIG.googleSheetUrl) {
-            const response = await fetch(CONFIG.googleSheetUrl);
-            if (!response.ok) throw new Error("Failed to fetch Google Sheet");
-            const csvText = await response.text();
-            rawData = parseCsv(csvText);
-        } else {
-             throw new Error("No Google Sheet URL provided");
-        }
+        if (!CONFIG.apiUrl) throw new Error("No API URL provided");
+        
+        // Fetch JSON data from Google Apps Script
+        const response = await fetch(CONFIG.apiUrl);
+        if (!response.ok) throw new Error("Failed to fetch data from API");
+        
+        let data = await response.json();
+        
+        // Formateo inicial para asegurarnos de que los montos sean números y ordenarlo
+        // Filtramos filas vacías y formateamos
+        data = data.filter(row => row.id || row.Fecha || row.Categoría || row.Monto).map(row => {
+            // Limpia el monto si viene con símbolos raros desde Sheets
+            let rawMonto = row['Monto'] !== undefined ? row['Monto'] : 0;
+            if (typeof rawMonto === 'string') {
+                rawMonto = rawMonto.replace(/[^0-9.-]+/g,"");
+            }
+            row['Monto'] = parseFloat(rawMonto) || 0;
+            
+            // Asegurar un formato YYYY-MM-DD para el ordenamiento
+            if (row['Fecha']) {
+                if (typeof row['Fecha'] === 'string' && row['Fecha'].includes('T')) {
+                    row['Fecha'] = row['Fecha'].split('T')[0];
+                } else if (typeof row['Fecha'] === 'string' && row['Fecha'].includes('/') && row['Fecha'].split('/')[2]) {
+                    const parts = row['Fecha'].split('/');
+                    row['Fecha'] = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                }
+            } else {
+                row['Fecha'] = new Date().toISOString().split('T')[0];
+            }
+            return row;
+        });
+
+        // Ordenar por fecha descendente
+        rawData = data.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
         
         initializeFiltersMap();
         applyFiltersAndRender();
@@ -205,6 +181,7 @@ async function handleFormSubmit(e) {
     };
 
     // Prepare data to send to Google Sheets
+    // IMPORTANT: Keys must exactly match what the Apps Script `data.key` expects
     const payload = {
         id: newTransaction.id,
         fecha: newTransaction.Fecha,
@@ -223,11 +200,11 @@ async function handleFormSubmit(e) {
     submitBtn.disabled = true;
 
     try {
-        if (CONFIG.googleAppScriptWriteUrl) {
-            // Enviar a Google Sheets
-            await fetch(CONFIG.googleAppScriptWriteUrl, {
+        if (CONFIG.apiUrl) {
+            // Enviar data a la API
+            await fetch(CONFIG.apiUrl, {
                 method: 'POST',
-                mode: 'no-cors', // Importante para enviar a Google Apps Script sin bloqueo CORS
+                mode: 'no-cors',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
             });
