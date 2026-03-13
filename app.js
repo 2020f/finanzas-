@@ -8,7 +8,7 @@ const CONFIG = {
     // We export it as CSV for easy parsing:
     googleSheetUrl: "https://docs.google.com/spreadsheets/d/19bBSf-VoSOICLebZ7bYyDZSuofTnDhWbpbSOo7J5kSU/export?format=csv",
     // Replace this with your Google Apps Script Web App URL once deployed
-    googleAppScriptWriteUrl: "",
+    googleAppScriptWriteUrl: "https://script.google.com/macros/s/AKfycbx0jkrZUskw8yphFmsX7PH-uSPvaBx2v8mNbQu4P4A2c2whOWghp741rwHify4o1MaoPw/exec",
     colors: {
         income: '#10B981', // Neon green
         expense: '#EF4444', // Neon red
