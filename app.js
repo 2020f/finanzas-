@@ -190,7 +190,7 @@ function setupEventListeners() {
 /**
  * Handle new transaction formulation
  */
-function handleFormSubmit(e) {
+async function handleFormSubmit(e) {
     e.preventDefault();
 
     const newTransaction = {
@@ -204,21 +204,6 @@ function handleFormSubmit(e) {
         'Cuenta': 'Dashboard'
     };
 
-    // Add to raw data array
-    rawData.unshift(newTransaction);
-    
-    // Sort array to keep chronological order before rendering
-    rawData.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
-
-    // Reset Form (keep date and type)
-    elements.formCategory.value = '';
-    elements.formDescription.value = '';
-    elements.formAmount.value = '';
-
-    // Trigger update
-    initializeFiltersMap();
-    applyFiltersAndRender();
-
     // Prepare data to send to Google Sheets
     const payload = {
         id: newTransaction.id,
@@ -231,19 +216,47 @@ function handleFormSubmit(e) {
         cuenta: newTransaction.Cuenta
     };
 
-    if (CONFIG.googleAppScriptWriteUrl) {
-        // Enviar a Google Sheets
-        fetch(CONFIG.googleAppScriptWriteUrl, {
-            method: 'POST',
-            mode: 'no-cors', // Importante para enviar a Google Apps Script sin bloqueo CORS
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-        }).then(() => {
-             console.log("Dato enviado al Sheet");
-        }).catch(err => console.error("Error guardando en Sheet:", err));
-    }
+    // Deshabilitar botón temporalmente para evitar dobles envíos
+    const submitBtn = elements.transactionForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+    submitBtn.disabled = true;
 
-    showToast("Transacción registrada localmente", "success");
+    try {
+        if (CONFIG.googleAppScriptWriteUrl) {
+            // Enviar a Google Sheets
+            await fetch(CONFIG.googleAppScriptWriteUrl, {
+                method: 'POST',
+                mode: 'no-cors', // Importante para enviar a Google Apps Script sin bloqueo CORS
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            });
+            console.log("Dato enviado al Sheet");
+        }
+
+        // Add to raw data array
+        rawData.unshift(newTransaction);
+        
+        // Sort array to keep chronological order before rendering
+        rawData.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
+
+        // Reset Form (keep date and type)
+        elements.formCategory.value = '';
+        elements.formDescription.value = '';
+        elements.formAmount.value = '';
+
+        // Trigger update
+        initializeFiltersMap();
+        applyFiltersAndRender();
+
+        showToast("Transacción guardada en la nube", "success");
+    } catch (err) {
+        console.error("Error guardando en Sheet:", err);
+        showToast("Error al guardar en la nube", "error");
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
 }
 
 function applySortIndicators() {
