@@ -180,18 +180,17 @@ async function handleFormSubmit(e) {
         'Cuenta': 'Dashboard'
     };
 
-    // Prepare data to send to Google Sheets
-    // IMPORTANT: Keys must exactly match what the Apps Script `data.key` expects
-    const payload = {
-        id: newTransaction.id,
-        fecha: newTransaction.Fecha,
-        tipo: newTransaction.Tipo,
-        categoria: newTransaction.Categoría,
-        descripcion: newTransaction.Descripción,
-        metodoDePago: newTransaction['Método de pago'],
-        monto: newTransaction.Monto,
-        cuenta: newTransaction.Cuenta
-    };
+    // En Producción (GitHub Pages) es mejor mandar los datos como formulario 
+    // para evitar bloqueos severos de CORS por parte del navegador.
+    const urlEncodedData = new URLSearchParams();
+    urlEncodedData.append("id", newTransaction.id);
+    urlEncodedData.append("fecha", newTransaction.Fecha);
+    urlEncodedData.append("tipo", newTransaction.Tipo);
+    urlEncodedData.append("categoria", newTransaction.Categoría);
+    urlEncodedData.append("descripcion", newTransaction.Descripción);
+    urlEncodedData.append("metodoDePago", newTransaction['Método de pago']);
+    urlEncodedData.append("monto", newTransaction.Monto);
+    urlEncodedData.append("cuenta", newTransaction.Cuenta);
 
     // Deshabilitar botón temporalmente para evitar dobles envíos
     const submitBtn = elements.transactionForm.querySelector('button[type="submit"]');
@@ -201,14 +200,14 @@ async function handleFormSubmit(e) {
 
     try {
         if (CONFIG.apiUrl) {
-            // Enviar data a la API
+            // Enviar data a la API en formato form-urlencoded
             await fetch(CONFIG.apiUrl, {
                 method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload)
+                // Eliminamos mode: 'no-cors' para recibir una respuesta legible si es posible
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: urlEncodedData.toString()
             });
-            console.log("Dato enviado al Sheet");
+            console.log("Dato enviado al Sheet desde la Web");
         }
 
         // Add to raw data array
